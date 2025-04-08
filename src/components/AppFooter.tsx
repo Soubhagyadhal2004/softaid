@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Heart, GitHub } from 'lucide-react';
+import { Heart, Github } from 'lucide-react';
 
 const AppFooter: React.FC = () => {
   return (
@@ -23,7 +23,7 @@ const AppFooter: React.FC = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <GitHub className="h-4 w-4 mr-1" />
+              <Github className="h-4 w-4 mr-1" />
               <span>Source Code</span>
             </a>
           </div>
