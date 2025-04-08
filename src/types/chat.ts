@@ -16,3 +16,13 @@ export interface SymptomEntity {
   symptom: string;
   confidence: number;
 }
+
+export interface Intent {
+  tag: string;
+  patterns: string[];
+  responses: string[];
+}
+
+export interface TrainingData {
+  intents: Intent[];
+}
