@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,14 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// Health theme colors
+				health: {
+					primary: '#4D96FF',
+					secondary: '#6FDFDF',
+					accent: '#5CCEEE',
+					light: '#E6F7FF',
+					dark: '#0A2463'
 				}
 			},
 			borderRadius: {
@@ -84,11 +93,30 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'pulse-slow': {
+					'0%, 100%': { opacity: '1' },
+					'50%': { opacity: '0.8' }
+				},
+				'fade-in': {
+					'0%': { opacity: '0', transform: 'translateY(10px)' },
+					'100%': { opacity: '1', transform: 'translateY(0)' }
+				},
+				'typing': {
+					'0%': { width: '0%' },
+					'100%': { width: '100%' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'pulse-slow': 'pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+				'fade-in': 'fade-in 0.5s ease-out',
+				'typing': 'typing 1.5s steps(30, end)'
+			},
+			fontFamily: {
+				'raleway': ['Raleway', 'sans-serif'],
+				'inter': ['Inter', 'sans-serif']
 			}
 		}
 	},
