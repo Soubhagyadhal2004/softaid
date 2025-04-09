@@ -183,66 +183,173 @@ const extractKeywords = (text: string): string[] => {
   return words.filter(word => !stopwords.includes(word) && word.length > 2);
 };
 
-// Identify symptoms from text using keyword extraction and matching
+// Enhanced symptom identification with fuzzy matching
 export const identifySymptoms = (text: string): SymptomEntity[] => {
   const keywords = extractKeywords(text);
   const foundSymptoms: SymptomEntity[] = [];
+  const processedSymptoms = new Set<string>(); // To avoid duplicate symptoms
   
-  // Check for exact symptom matches
+  // Map of common misspellings or alternative expressions to standard symptom names
+  const symptomAliases: Record<string, string[]> = {
+    "headache": ["head ache", "head pain", "head hurts", "head is pounding", "head is throbbing", "painful head"],
+    "fever": ["high temperature", "feeling hot", "burning up", "hot", "temperature", "fevering"],
+    "nausea": ["feeling sick", "want to throw up", "stomach turning", "queasiness", "feel like vomiting"],
+    "fatigue": ["tired", "exhausted", "no energy", "weak", "lethargic", "low energy", "weary"],
+    "cough": ["coughing", "throat irritation", "hacking", "dry throat", "throat tickle"],
+    "vomiting": ["throwing up", "puking", "bringing up food", "vomit"],
+    "abdominal pain": ["stomach pain", "tummy ache", "stomach ache", "pain in abdomen", "belly pain"],
+    "dizziness": ["feeling dizzy", "lightheaded", "spinning", "vertigo", "wobbly", "unstable"],
+    "chest pain": ["chest ache", "pain in chest", "chest discomfort", "chest hurts"],
+    "sore throat": ["throat pain", "painful throat", "throat hurts", "scratchy throat", "throat irritation"]
+  };
+  
+  // Check for multi-word symptoms in the full text
   const lowerText = text.toLowerCase();
   
-  // First check for multi-word symptoms
+  // First check for exact multi-word symptoms
   for (const symptom of Object.keys(symptomDiseaseMapping)) {
     if (symptom.includes(" ")) {
       if (lowerText.includes(symptom)) {
-        foundSymptoms.push({
-          symptom,
-          confidence: 0.9 // High confidence for exact multi-word matches
-        });
+        if (!processedSymptoms.has(symptom)) {
+          foundSymptoms.push({
+            symptom,
+            confidence: 0.9 // High confidence for exact multi-word matches
+          });
+          processedSymptoms.add(symptom);
+        }
       }
     }
   }
   
-  // Then check for single-word symptoms in our keywords
+  // Check for symptom aliases and alternative expressions
+  for (const [standardSymptom, aliases] of Object.entries(symptomAliases)) {
+    for (const alias of aliases) {
+      if (lowerText.includes(alias)) {
+        if (!processedSymptoms.has(standardSymptom)) {
+          foundSymptoms.push({
+            symptom: standardSymptom,
+            confidence: 0.85 // High confidence for recognized alternative expressions
+          });
+          processedSymptoms.add(standardSymptom);
+        }
+      }
+    }
+  }
+  
+  // Check for fuzzy matches of single-word symptoms against keywords
   for (const keyword of keywords) {
     for (const symptom of Object.keys(symptomDiseaseMapping)) {
-      if (!symptom.includes(" ") && (symptom === keyword || symptom.includes(keyword) || keyword.includes(symptom))) {
-        // Check if we already added this symptom (from multi-word check)
-        if (!foundSymptoms.some(s => s.symptom === symptom)) {
-          foundSymptoms.push({
-            symptom,
-            confidence: symptom === keyword ? 0.85 : 0.7 // Higher confidence for exact matches
-          });
-        }
-      }
-    }
-  }
-  
-  // Check for approximate matches and symptoms that might be described differently
-  const symptomContexts: Record<string, string[]> = {
-    "headache": ["head hurts", "head pain", "head is pounding", "head is throbbing"],
-    "fever": ["feeling hot", "temperature", "burning up", "hot"],
-    "nausea": ["feeling sick", "want to throw up", "stomach turning"],
-    "fatigue": ["tired", "exhausted", "no energy", "weak", "lethargic"],
-    "cough": ["coughing", "throat irritation", "hacking"],
-    "vomiting": ["throwing up", "puking", "bringing up food"]
-  };
-  
-  for (const [symptom, contexts] of Object.entries(symptomContexts)) {
-    for (const context of contexts) {
-      if (lowerText.includes(context)) {
-        // Check if we already added this symptom
-        if (!foundSymptoms.some(s => s.symptom === symptom)) {
-          foundSymptoms.push({
-            symptom,
-            confidence: 0.65 // Lower confidence for contextual matches
-          });
-        }
+      // Skip symptoms we've already processed
+      if (processedSymptoms.has(symptom)) continue;
+      
+      // Skip multi-word symptoms (already handled above)
+      if (symptom.includes(" ")) continue;
+      
+      // Check for fuzzy matches
+      if (isCloseMatch(keyword, symptom)) {
+        foundSymptoms.push({
+          symptom,
+          confidence: 0.8 // Good confidence for fuzzy matches
+        });
+        processedSymptoms.add(symptom);
       }
     }
   }
   
   return foundSymptoms;
+};
+
+// Calculate similarity score between two strings
+const calculateSimilarity = (str1: string, str2: string): number => {
+  const lowerStr1 = str1.toLowerCase();
+  const lowerStr2 = str2.toLowerCase();
+  
+  // Simple word match scoring
+  const words1 = lowerStr1.split(/\s+/);
+  const words2 = lowerStr2.split(/\s+/);
+  
+  let matchCount = 0;
+  words1.forEach(word => {
+    if (words2.includes(word) && word.length > 2) {
+      matchCount++;
+    }
+  });
+  
+  // Calculate similarity percentage
+  return matchCount / Math.max(words1.length, words2.length);
+};
+
+// Function to calculate Levenshtein distance (edit distance) between two strings
+const calculateLevenshteinDistance = (str1: string, str2: string): number => {
+  const matrix: number[][] = Array(str1.length + 1).fill(null).map(() => Array(str2.length + 1).fill(null));
+
+  for (let i = 0; i <= str1.length; i++) {
+    matrix[i][0] = i;
+  }
+
+  for (let j = 0; j <= str2.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let j = 1; j <= str2.length; j++) {
+    for (let i = 1; i <= str1.length; i++) {
+      const substitutionCost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1, // deletion
+        matrix[i][j - 1] + 1, // insertion
+        matrix[i - 1][j - 1] + substitutionCost // substitution
+      );
+    }
+  }
+
+  return matrix[str1.length][str2.length];
+};
+
+// Function to calculate similarity ratio based on edit distance
+const calculateSimilarityRatio = (str1: string, str2: string): number => {
+  const longerLength = Math.max(str1.length, str2.length);
+  if (longerLength === 0) return 1.0;
+  
+  // Calculate edit distance and convert to similarity ratio
+  const editDistance = calculateLevenshteinDistance(str1, str2);
+  return (longerLength - editDistance) / longerLength;
+};
+
+// Check if a word is closely related to a symptom
+const isCloseMatch = (word: string, symptom: string): boolean => {
+  // Normalize strings: convert to lowercase and trim whitespace
+  const normalizedWord = word.toLowerCase().trim();
+  const normalizedSymptom = symptom.toLowerCase().trim();
+  
+  // Direct match
+  if (normalizedWord === normalizedSymptom) return true;
+  
+  // Check if word is a substring of symptom or vice versa
+  if (normalizedSymptom.includes(normalizedWord) || normalizedWord.includes(normalizedSymptom)) {
+    // For very short strings (less than 4 characters), require higher similarity
+    const minLength = Math.min(normalizedWord.length, normalizedSymptom.length);
+    if (minLength < 4 && normalizedWord !== normalizedSymptom) {
+      return false;
+    }
+    return true;
+  }
+  
+  // Check for compound words (with spaces or hyphens)
+  if (normalizedSymptom.includes(' ') || normalizedSymptom.includes('-')) {
+    const parts = normalizedSymptom.split(/[\s-]+/);
+    if (parts.some(part => part === normalizedWord)) {
+      return true;
+    }
+  }
+  
+  // Calculate similarity ratio for fuzzy matching
+  const similarityRatio = calculateSimilarityRatio(normalizedWord, normalizedSymptom);
+  
+  // Set threshold based on word length
+  // Shorter words need higher similarity to avoid false positives
+  const similarityThreshold = normalizedWord.length <= 4 ? 0.85 : 0.75;
+  
+  return similarityRatio >= similarityThreshold;
 };
 
 // Neural network simulation for disease prediction
@@ -274,7 +381,7 @@ export const predictDisease = (symptoms: SymptomEntity[]): DiseasePrediction[] =
   
   for (const [disease, { score, symptoms }] of Object.entries(diseaseScores)) {
     // Only include diseases with at least 2 matching symptoms, unless there's only 1 symptom total
-    if (symptoms.size >= 2 || (symptoms.size === 1 && symptoms.size === symptoms.length)) {
+    if (symptoms.size >= 2 || (symptoms.size === 1 && symptoms.size === symptoms.values().length)) {
       totalScore += score;
       predictions.push({
         disease,
@@ -293,26 +400,6 @@ export const predictDisease = (symptoms: SymptomEntity[]): DiseasePrediction[] =
         parseFloat((prediction.probability / totalScore).toFixed(2)) : 0
     }))
     .slice(0, 3); // Return top 3 predictions
-};
-
-// Calculate similarity score between two strings
-const calculateSimilarity = (str1: string, str2: string): number => {
-  const lowerStr1 = str1.toLowerCase();
-  const lowerStr2 = str2.toLowerCase();
-  
-  // Simple word match scoring
-  const words1 = lowerStr1.split(/\s+/);
-  const words2 = lowerStr2.split(/\s+/);
-  
-  let matchCount = 0;
-  words1.forEach(word => {
-    if (words2.includes(word) && word.length > 2) {
-      matchCount++;
-    }
-  });
-  
-  // Calculate similarity percentage
-  return matchCount / Math.max(words1.length, words2.length);
 };
 
 // Find the best matching intent for a given user message
