@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
-import { Message, Feedback } from '@/types/chat';
-import { generateResponse, generateId } from '@/utils/chatUtils';
+import { Message, Feedback, DiseasePrediction } from '@/types/chat';
+import { generateResponse, generateId, predictDisease, identifySymptoms } from '@/utils/chatUtils';
 import { useToast } from '@/components/ui/use-toast';
 
 const ChatContainer: React.FC = () => {
@@ -11,7 +11,7 @@ const ChatContainer: React.FC = () => {
     {
       id: generateId(),
       sender: 'bot',
-      text: "Hello! I'm your Health Savvy AI assistant. How can I help you today?",
+      text: "Hello! I'm your Health Savvy AI assistant. Describe your symptoms in detail, and I'll try to identify possible conditions using neural network analysis.",
       timestamp: new Date()
     }
   ]);
@@ -28,13 +28,14 @@ const ChatContainer: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const addMessage = (sender: 'user' | 'bot', text: string, isLoading = false) => {
+  const addMessage = (sender: 'user' | 'bot', text: string, predictions: DiseasePrediction[] = [], isLoading = false) => {
     const newMessage: Message = {
       id: generateId(),
       sender,
       text,
       timestamp: new Date(),
-      isLoading
+      isLoading,
+      predictions: predictions.length > 0 ? predictions : undefined
     };
     
     setMessages(prevMessages => [...prevMessages, newMessage]);
@@ -49,21 +50,31 @@ const ChatContainer: React.FC = () => {
     setIsProcessing(true);
     
     // Add a loading message
-    const loadingId = addMessage('bot', '', true);
+    const loadingId = addMessage('bot', '', [], true);
     
-    // Simulate processing time for NLP and ML
+    // Simulate neural network processing time
     setTimeout(() => {
       // Remove the loading message
       setMessages(prevMessages => 
         prevMessages.filter(msg => msg.id !== loadingId)
       );
       
-      // Generate and add the bot response
+      // Generate and add the bot response with disease predictions
       const response = generateResponse(text);
-      addMessage('bot', response);
+      addMessage('bot', response.text, response.predictions);
+      
+      // Show toast if disease was identified
+      if (response.predictions && response.predictions.length > 0) {
+        const topDisease = response.predictions[0];
+        toast({
+          title: `Disease Analysis: ${topDisease.disease}`,
+          description: `Identified with ${(topDisease.probability * 100).toFixed(0)}% probability based on ${topDisease.relatedSymptoms.length} symptoms`,
+          duration: 5000
+        });
+      }
       
       setIsProcessing(false);
-    }, 1500);
+    }, 2000);
   };
 
   const handleFeedback = (messageId: string, isHelpful: boolean) => {
@@ -74,12 +85,12 @@ const ChatContainer: React.FC = () => {
     toast({
       title: isHelpful ? "Thank you for your feedback!" : "We'll improve our responses",
       description: isHelpful 
-        ? "This helps our AI learn and provide better answers."
-        : "Your feedback helps us train the AI to be more accurate.",
+        ? "This helps our neural network learn and provide better predictions."
+        : "Your feedback helps train the AI to be more accurate.",
       duration: 3000
     });
     
-    // In a real app, this would send the feedback to the backend
+    // In a real app, this would send the feedback to the backend to update the neural network
     console.log("Feedback submitted:", { messageId, isHelpful });
   };
 

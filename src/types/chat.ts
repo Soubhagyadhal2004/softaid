@@ -5,6 +5,7 @@ export interface Message {
   text: string;
   timestamp: Date;
   isLoading?: boolean;
+  predictions?: DiseasePrediction[];
 }
 
 export interface Feedback {
@@ -15,6 +16,12 @@ export interface Feedback {
 export interface SymptomEntity {
   symptom: string;
   confidence: number;
+}
+
+export interface DiseasePrediction {
+  disease: string;
+  probability: number;
+  relatedSymptoms: string[];
 }
 
 export interface Intent {
