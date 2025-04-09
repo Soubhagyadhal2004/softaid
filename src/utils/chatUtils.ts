@@ -1,4 +1,3 @@
-
 // Utility for calculating symptom similarity
 const calculateSymptomSimilarity = (userSymptoms: Set<string>, diseaseSymptoms: Set<string>): number => {
   const matchingSymptoms = new Set([...userSymptoms].filter(symptom => diseaseSymptoms.has(symptom)));
@@ -85,6 +84,119 @@ const similarityRatio = (a: string, b: string): number => {
   return maxLength === 0 ? 1 : 1 - distance / maxLength;
 };
 
+// Training data for medicine recommendations
+const medicineIntents: TrainingData = {
+  intents: [
+    {
+      tag: "cold",
+      patterns: ["I have a runny nose", "Sneezing a lot", "My nose is blocked"],
+      responses: [
+        "You may have a common cold. Try steam inhalation and stay warm.",
+        "Over-the-counter meds like Cetirizine or Paracetamol may help.",
+        "Do you also have a fever or sore throat?"
+      ]
+    },
+    {
+      tag: "flu",
+      patterns: ["High fever", "Body ache and chills", "Cough and sore throat"],
+      responses: [
+        "Sounds like flu. Rest well, drink warm fluids, and take paracetamol.",
+        "If symptoms worsen, antiviral drugs like Oseltamivir may be prescribed.",
+        "Are you experiencing breathlessness or chest pain as well?"
+      ]
+    },
+    {
+      tag: "covid",
+      patterns: ["Loss of taste", "Shortness of breath", "Dry cough", "COVID symptoms"],
+      responses: [
+        "These could be COVID-19 symptoms. Please isolate and get tested.",
+        "Take antipyretics, stay hydrated, and monitor oxygen levels.",
+        "Have you been vaccinated or tested recently?"
+      ]
+    },
+    {
+      tag: "malaria",
+      patterns: ["Chills and shivering", "Fever that comes and goes", "Muscle pain", "Sweating"],
+      responses: [
+        "You may have malaria. A blood test will confirm the diagnosis.",
+        "Start taking prescribed anti-malarials like Artemisinin combination therapy (ACT).",
+        "Are you experiencing nausea or vomiting as well?"
+      ]
+    },
+    {
+      tag: "typhoid",
+      patterns: ["High fever for days", "Abdominal pain", "Feeling very weak", "Constipation or diarrhea"],
+      responses: [
+        "You could have typhoid. A Widal test is suggested.",
+        "Ciprofloxacin or Cefixime may be prescribed based on severity.",
+        "Is the fever persistent or fluctuating?"
+      ]
+    },
+    {
+      tag: "migraine",
+      patterns: ["Throbbing headache", "Pain on one side", "Light sensitivity", "Aura before headache"],
+      responses: [
+        "Sounds like a migraine. Rest in a quiet dark room and avoid screen time.",
+        "You can try medications like Sumatriptan or Naproxen.",
+        "Do you also experience nausea or blurred vision?"
+      ]
+    },
+    {
+      tag: "asthma",
+      patterns: ["Wheezing", "Chest tightness", "Shortness of breath", "Difficulty in breathing"],
+      responses: [
+        "This may be asthma. Avoid dusty environments and known allergens.",
+        "Use prescribed inhalers like Salbutamol during attacks.",
+        "Do you have a history of asthma or allergies?"
+      ]
+    },
+    {
+      tag: "dengue",
+      patterns: ["Severe body pain", "High fever", "Rashes", "Bleeding gums", "Low platelet count"],
+      responses: [
+        "Dengue might be the issue. Avoid aspirin and get platelet count checked regularly.",
+        "Use paracetamol for fever, rest well, and stay hydrated with ORS.",
+        "Have you noticed any bleeding or bruising?"
+      ]
+    },
+    {
+      tag: "depression",
+      patterns: ["Feeling low", "No energy", "Hopelessness", "I can't sleep", "Loss of interest"],
+      responses: [
+        "You might be experiencing depression. Talk to a mental health professional.",
+        "SSRIs like Sertraline or CBT therapy might help. Avoid self-diagnosing.",
+        "Have these feelings been constant for more than 2 weeks?"
+      ]
+    },
+    {
+      tag: "acidity",
+      patterns: ["Heartburn", "Acid reflux", "Burning in chest after food"],
+      responses: [
+        "This could be acidity. Avoid spicy foods and eat smaller meals.",
+        "Antacids like Pantoprazole or Ranitidine may help.",
+        "Do you also experience bloating or burping?"
+      ]
+    },
+    {
+      tag: "ulcer",
+      patterns: ["Stomach pain", "Pain after eating", "Nausea", "Frequent burping"],
+      responses: [
+        "Possible peptic ulcer. A gastroscopy can confirm it.",
+        "Take antacids or PPIs like Omeprazole after doctor's advice.",
+        "Are you taking any painkillers frequently?"
+      ]
+    },
+    {
+      tag: "healthy",
+      patterns: ["I'm fine", "I feel good", "No health issues"],
+      responses: [
+        "That's great! Stay hydrated, eat well, and do regular checkups.",
+        "Happy to hear you're feeling well! Would you like health tips?"
+      ]
+    }
+  ]
+};
+
 // Extract symptoms from user message with fuzzy matching
 export const identifySymptoms = (message: string): { symptom: string, confidence: number }[] => {
   const words = message.toLowerCase().split(/\W+/).filter(word => word.length > 2);
@@ -166,47 +278,110 @@ export const predictDisease = (symptoms: Set<string>): { disease: string, probab
     .sort((a, b) => b.probability - a.probability);
 };
 
+// Function to find the most relevant intent based on the user's message
+const findIntent = (message: string): Intent | null => {
+  let bestMatch: { intent: Intent, score: number } | null = null;
+  const normalizedMessage = message.toLowerCase();
+
+  for (const intent of medicineIntents.intents) {
+    // Check each pattern in the intent
+    for (const pattern of intent.patterns) {
+      // Calculate similarity between message and pattern
+      const score = similarityRatio(normalizedMessage, pattern.toLowerCase());
+      
+      // If exact match or very high confidence (over 0.8)
+      if (score > 0.8) {
+        // If this is the best match so far, update bestMatch
+        if (!bestMatch || score > bestMatch.score) {
+          bestMatch = { intent, score };
+        }
+        
+        // If it's an exact match, return immediately
+        if (score > 0.95) {
+          return intent;
+        }
+      }
+    }
+  }
+
+  // If we found a good match, return it
+  return bestMatch ? bestMatch.intent : null;
+}
+
+// Get medicine recommendations based on intent
+const getMedicineRecommendation = (intent: Intent): string => {
+  // Randomly select one of the responses for this intent
+  const randomIndex = Math.floor(Math.random() * intent.responses.length);
+  return intent.responses[randomIndex];
+}
+
 // Generate response based on user message
 export const generateResponse = (message: string): { text: string, predictions: { disease: string, probability: number, relatedSymptoms: string[] }[] } => {
   // Extract symptoms from the message
   const identifiedSymptomEntities = identifySymptoms(message);
   const identifiedSymptoms = new Set(identifiedSymptomEntities.map(entity => entity.symptom));
   
+  // Look for intent match for medicine recommendations
+  const matchedIntent = findIntent(message);
+  
   // No symptoms identified
-  if (identifiedSymptoms.size === 0) {
+  if (identifiedSymptoms.size === 0 && !matchedIntent) {
     return {
       text: "I couldn't identify any specific symptoms in your message. Could you please provide more details about how you're feeling?",
       predictions: []
     };
   }
   
-  // Predict diseases based on identified symptoms
+  let responseText = "";
   const predictions = predictDisease(identifiedSymptoms);
-  
-  // Generate response text
-  let responseText = `I've identified the following symptoms: ${[...identifiedSymptoms].join(', ')}. `;
-  
-  if (predictions.length > 0) {
-    responseText += `Based on these symptoms, you might be experiencing: `;
+
+  // If we found a matching intent, use that for a personalized response with medicine recommendations
+  if (matchedIntent) {
+    responseText = getMedicineRecommendation(matchedIntent);
     
-    // Add top 3 predictions to the response
-    const topPredictions = predictions.slice(0, 3);
-    topPredictions.forEach((prediction, index) => {
-      const probability = Math.round(prediction.probability * 100);
-      responseText += `${prediction.disease} (${probability}% match)`;
+    // If we also identified symptoms, add that information
+    if (identifiedSymptoms.size > 0) {
+      responseText += `\n\nI've also identified these symptoms: ${[...identifiedSymptoms].join(', ')}. `;
       
-      if (index < topPredictions.length - 1) {
-        responseText += ", ";
+      if (predictions.length > 0) {
+        responseText += `Based on these symptoms, you might be experiencing: `;
+        
+        // Add top 3 predictions to the response
+        const topPredictions = predictions.slice(0, 3);
+        topPredictions.forEach((prediction, index) => {
+          const probability = Math.round(prediction.probability * 100);
+          responseText += `${prediction.disease} (${probability}% match)`;
+          
+          if (index < topPredictions.length - 1) {
+            responseText += ", ";
+          }
+        });
       }
-    });
-    
-    responseText += `. `;
-    
-    // Add disclaimer
-    responseText += `Please note that this is not a medical diagnosis. If you're concerned about your symptoms, please consult with a healthcare provider.`;
+    }
   } else {
-    responseText += `I couldn't find any specific conditions matching these symptoms in my database. If you're concerned, please consult with a healthcare provider.`;
+    // Fall back to the original symptom-based response
+    responseText = `I've identified the following symptoms: ${[...identifiedSymptoms].join(', ')}. `;
+    
+    if (predictions.length > 0) {
+      responseText += `Based on these symptoms, you might be experiencing: `;
+      
+      // Add top 3 predictions to the response
+      const topPredictions = predictions.slice(0, 3);
+      topPredictions.forEach((prediction, index) => {
+        const probability = Math.round(prediction.probability * 100);
+        responseText += `${prediction.disease} (${probability}% match)`;
+        
+        if (index < topPredictions.length - 1) {
+          responseText += ", ";
+        }
+      });
+    } else {
+      responseText += `I couldn't find any specific conditions matching these symptoms in my database.`;
+    }
   }
+  
+  // Add disclaimer
+  responseText += ` Please note that this is not a medical diagnosis. If you're concerned about your symptoms, please consult with a healthcare provider.`;
   
   return {
     text: responseText,
