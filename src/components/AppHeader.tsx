@@ -20,7 +20,7 @@ const AppHeader: React.FC = () => {
       <div className="container max-w-6xl mx-auto px-4 flex justify-between items-center">
         <div className="flex items-center">
           <Activity className="h-8 w-8 text-health-primary mr-2" />
-          <h1 className="text-2xl font-bold text-health-dark">Health Savvy AI</h1>
+          <h1 className="text-2xl font-bold text-health-dark">Soft Aid</h1>
         </div>
         
         <div className="flex items-center space-x-2">

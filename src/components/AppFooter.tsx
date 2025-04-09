@@ -8,7 +8,7 @@ const AppFooter: React.FC = () => {
       <div className="container max-w-6xl mx-auto px-4">
         <div className="flex flex-col md:flex-row justify-between items-center text-sm text-gray-600">
           <p>
-            <span className="font-medium">Health Savvy AI</span> - For demonstration purposes only. Not for medical use.
+            <span className="font-medium">Soft Aid</span> - For demonstration purposes only. Not for medical use.
           </p>
           
           <div className="flex items-center space-x-4 mt-2 md:mt-0">
