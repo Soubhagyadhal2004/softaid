@@ -11,7 +11,7 @@ const ChatContainer: React.FC = () => {
     {
       id: generateId(),
       sender: 'bot',
-      text: "Hello! I'm your Health Savvy AI assistant. Describe your symptoms in detail, and I'll try to identify possible conditions using neural network analysis.",
+      text: "Hello! I'm your Soft Aid assistant. Describe your symptoms in detail, and I'll try to identify possible conditions using neural network analysis.",
       timestamp: new Date()
     }
   ]);
