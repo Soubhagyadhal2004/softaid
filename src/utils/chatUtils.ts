@@ -12,6 +12,9 @@ export const generateId = (): string => {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 };
 
+// Import the necessary types from chat.ts
+import { ConversationType, TrainingData, Intent, DiseasePrediction } from '@/types/chat';
+
 // NLP Preprocessing functions
 // Lowercasing
 const lowercase = (text: string): string => {
@@ -528,7 +531,7 @@ export const identifySymptoms = (message: string): { symptom: string, confidence
 };
 
 // Predict diseases based on symptoms
-export const predictDisease = (symptoms: Set<string>): { disease: string, probability: number, relatedSymptoms: string[] }[] => {
+export const predictDisease = (symptoms: Set<string>): DiseasePrediction[] => {
   if (symptoms.size === 0) return [];
   
   const predictions = diseaseDatabase.map(disease => {
@@ -603,7 +606,7 @@ const getMedicineRecommendation = (intent: Intent): string => {
 };
 
 // Generate response based on user message
-export const generateResponse = (message: string): { text: string, predictions: { disease: string, probability: number, relatedSymptoms: string[] }[] } => {
+export const generateResponse = (message: string): { text: string, predictions: DiseasePrediction[] } => {
   // First, identify what type of conversation this is
   const conversationType = identifyConversationType(message);
   
