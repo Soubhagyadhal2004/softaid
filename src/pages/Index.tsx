@@ -14,7 +14,7 @@ const Index = () => {
         <section className="text-center mb-8">
           <h2 className="text-3xl font-bold text-health-dark mb-2">Your AI Health Assistant</h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Ask me about symptoms, get health information, and receive guidance on common medical concerns.
+            Chat naturally with me about your health concerns. I can help identify symptoms, suggest possible conditions, and provide general health information.
           </p>
         </section>
         
