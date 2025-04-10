@@ -33,3 +33,14 @@ export interface Intent {
 export interface TrainingData {
   intents: Intent[];
 }
+
+export enum ConversationType {
+  Greeting = 'greeting',
+  SmallTalk = 'smalltalk',
+  AboutBot = 'aboutbot',
+  HowItWorks = 'howitworks',
+  Help = 'help',
+  ThankYou = 'thankyou',
+  Exit = 'exit',
+  Symptom = 'symptom'
+}
