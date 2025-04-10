@@ -12,6 +12,59 @@ export const generateId = (): string => {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 };
 
+// NLP Preprocessing functions
+// Lowercasing
+const lowercase = (text: string): string => {
+  return text.toLowerCase();
+};
+
+// Tokenization
+const tokenize = (text: string): string[] => {
+  return text.toLowerCase().split(/\W+/).filter(token => token.length > 0);
+};
+
+// Stop words list
+const stopWords = new Set([
+  "a", "an", "the", "and", "but", "or", "for", "nor", "on", "at", "to", "by", 
+  "with", "about", "in", "is", "am", "are", "was", "were", "be", "been", "being",
+  "have", "has", "had", "do", "does", "did", "shall", "will", "should", "would",
+  "may", "might", "must", "can", "could", "i", "you", "he", "she", "it", "we", "they",
+  "me", "him", "her", "us", "them", "my", "your", "his", "its", "our", "their",
+  "mine", "yours", "hers", "ours", "theirs", "this", "that", "these", "those",
+  "of", "from", "as", "so", "such", "get", "getting", "got", "having"
+]);
+
+// Remove stop words
+const removeStopWords = (tokens: string[]): string[] => {
+  return tokens.filter(token => !stopWords.has(token));
+};
+
+// Basic stemming function (simplified Porter stemmer logic)
+const stem = (word: string): string => {
+  // Handle some common medical term suffixes
+  if (word.endsWith("ing")) return word.slice(0, -3);
+  if (word.endsWith("s") && !word.endsWith("ss")) return word.slice(0, -1);
+  if (word.endsWith("ed")) return word.slice(0, -2);
+  if (word.endsWith("es")) return word.slice(0, -2);
+  if (word.endsWith("ies")) return word.slice(0, -3) + "y";
+  if (word.endsWith("aches")) return word.slice(0, -2);
+  return word;
+};
+
+// Apply stemming to each token
+const stemTokens = (tokens: string[]): string[] => {
+  return tokens.map(token => stem(token));
+};
+
+// Text preprocessing pipeline
+const preprocessText = (text: string): string[] => {
+  const lowercased = lowercase(text);
+  const tokens = tokenize(lowercased);
+  const withoutStopWords = removeStopWords(tokens);
+  const stemmed = stemTokens(withoutStopWords);
+  return stemmed;
+};
+
 // Sample database of diseases and their symptoms
 const diseaseDatabase = [
   {
@@ -35,6 +88,98 @@ const diseaseDatabase = [
     symptoms: new Set(["sneezing", "runny nose", "itchy eyes", "congestion"])
   }
 ];
+
+// Text Data Augmentation
+// Synonym replacement dictionary for medical terms
+const synonymDict: Record<string, string[]> = {
+  "headache": ["head pain", "migraine", "head discomfort", "skull pain", "cranial pain"],
+  "fever": ["elevated temperature", "high temperature", "hyperthermia", "pyrexia", "febrile"],
+  "cough": ["coughing", "hack", "throat clearing", "respiratory spasm"],
+  "fatigue": ["tiredness", "exhaustion", "lethargy", "weariness", "lack of energy"],
+  "sore throat": ["throat pain", "pharyngitis", "throat irritation", "painful swallowing"],
+  "runny nose": ["nasal discharge", "rhinorrhea", "nasal drip", "nasal secretion"],
+  "shortness of breath": ["dyspnea", "breathlessness", "respiratory distress", "difficulty breathing"],
+  "nausea": ["queasiness", "sickness", "upset stomach", "stomach discomfort"],
+  "vomiting": ["emesis", "throwing up", "regurgitation", "gastric emptying"],
+  "diarrhea": ["loose stool", "watery stool", "bowel urgency", "frequent defecation"],
+  "pain": ["discomfort", "ache", "soreness", "distress", "suffering"],
+  "itching": ["pruritus", "itchiness", "irritation", "scratchy sensation"],
+  "rash": ["skin eruption", "dermatitis", "hives", "skin irritation"],
+  "dizziness": ["vertigo", "lightheadedness", "faintness", "giddiness"],
+  "swelling": ["edema", "inflammation", "distension", "puffiness"],
+};
+
+// Synonym replacement augmentation
+const replaceSynonyms = (text: string): string => {
+  const words = text.split(' ');
+  
+  return words.map(word => {
+    // 30% chance to replace with synonym if available
+    if (Math.random() < 0.3 && synonymDict[word]) {
+      const synonyms = synonymDict[word];
+      return synonyms[Math.floor(Math.random() * synonyms.length)];
+    }
+    return word;
+  }).join(' ');
+};
+
+// Word order swap augmentation
+const swapWordOrder = (text: string): string => {
+  const words = text.split(' ');
+  if (words.length < 3) return text;
+  
+  // Get two random positions for swapping
+  const pos1 = Math.floor(Math.random() * words.length);
+  let pos2 = Math.floor(Math.random() * words.length);
+  
+  // Make sure pos2 is different from pos1
+  while (pos2 === pos1) {
+    pos2 = Math.floor(Math.random() * words.length);
+  }
+  
+  // Swap words
+  [words[pos1], words[pos2]] = [words[pos2], words[pos1]];
+  
+  return words.join(' ');
+};
+
+// Random insertion augmentation (add a descriptor or modifier)
+const randomInsertion = (text: string): string => {
+  const words = text.split(' ');
+  const position = Math.floor(Math.random() * (words.length + 1));
+  
+  const descriptors = [
+    "severe", "mild", "constant", "occasional", "intense", "sharp", "dull",
+    "chronic", "acute", "persistent", "intermittent", "recurring", "sudden"
+  ];
+  
+  const randomDescriptor = descriptors[Math.floor(Math.random() * descriptors.length)];
+  words.splice(position, 0, randomDescriptor);
+  
+  return words.join(' ');
+};
+
+// Generate augmented variations of a symptom description
+const augmentText = (text: string, count: number = 3): string[] => {
+  const augmentations: string[] = [text];
+  
+  const augmentationFunctions = [
+    replaceSynonyms,
+    swapWordOrder,
+    randomInsertion
+  ];
+  
+  for (let i = 0; i < count; i++) {
+    // Select random augmentation method
+    const randomFn = augmentationFunctions[Math.floor(Math.random() * augmentationFunctions.length)];
+    const newVariation = randomFn(text);
+    if (!augmentations.includes(newVariation)) {
+      augmentations.push(newVariation);
+    }
+  }
+  
+  return augmentations;
+};
 
 // Common symptom misspellings and aliases
 const symptomAliases: Record<string, string[]> = {
@@ -197,8 +342,31 @@ const medicineIntents: TrainingData = {
   ]
 };
 
+// Enhance intent patterns with augmentations
+const enhanceIntentPatterns = () => {
+  medicineIntents.intents.forEach(intent => {
+    const originalPatterns = [...intent.patterns];
+    originalPatterns.forEach(pattern => {
+      // Generate 2 augmentations for each pattern
+      const augmentedPatterns = augmentText(pattern, 2);
+      // Add new patterns if they're not already in the list
+      augmentedPatterns.forEach(newPattern => {
+        if (!intent.patterns.includes(newPattern)) {
+          intent.patterns.push(newPattern);
+        }
+      });
+    });
+  });
+};
+
+// Apply the augmentation to intent patterns
+enhanceIntentPatterns();
+
 // Extract symptoms from user message with fuzzy matching
 export const identifySymptoms = (message: string): { symptom: string, confidence: number }[] => {
+  // Apply NLP preprocessing
+  const preprocessedMessage = preprocessText(message).join(' ');
+  
   const words = message.toLowerCase().split(/\W+/).filter(word => word.length > 2);
   const phrases = [];
   
@@ -282,6 +450,9 @@ export const predictDisease = (symptoms: Set<string>): { disease: string, probab
 const findIntent = (message: string): Intent | null => {
   let bestMatch: { intent: Intent, score: number } | null = null;
   const normalizedMessage = message.toLowerCase();
+  
+  // Preprocess the user message
+  const preprocessedMessage = preprocessText(message).join(' ');
 
   for (const intent of medicineIntents.intents) {
     // Check each pattern in the intent
@@ -301,19 +472,33 @@ const findIntent = (message: string): Intent | null => {
           return intent;
         }
       }
+      
+      // Also try matching with preprocessed text for better semantic matching
+      const preprocessedPattern = preprocessText(pattern).join(' ');
+      const preprocessedScore = similarityRatio(preprocessedMessage, preprocessedPattern);
+      
+      if (preprocessedScore > 0.8) {
+        if (!bestMatch || preprocessedScore > bestMatch.score) {
+          bestMatch = { intent, score: preprocessedScore };
+        }
+        
+        if (preprocessedScore > 0.95) {
+          return intent;
+        }
+      }
     }
   }
 
   // If we found a good match, return it
   return bestMatch ? bestMatch.intent : null;
-}
+};
 
 // Get medicine recommendations based on intent
 const getMedicineRecommendation = (intent: Intent): string => {
   // Randomly select one of the responses for this intent
   const randomIndex = Math.floor(Math.random() * intent.responses.length);
   return intent.responses[randomIndex];
-}
+};
 
 // Generate response based on user message
 export const generateResponse = (message: string): { text: string, predictions: { disease: string, probability: number, relatedSymptoms: string[] }[] } => {
